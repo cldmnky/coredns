@@ -130,11 +130,20 @@ var _ caddy.GracefulServer = &Server{}
 // This implements caddy.TCPServer interface.
 func (s *Server) Serve(l net.Listener) error {
 	s.m.Lock()
-	s.server[tcp] = &dns.Server{Listener: l, Net: "tcp", Handler: dns.HandlerFunc(func(w dns.ResponseWriter, r *dns.Msg) {
-		ctx := context.WithValue(context.Background(), Key{}, s)
-		ctx = context.WithValue(ctx, LoopKey{}, 0)
-		s.ServeDNS(ctx, w, r)
-	}), TsigSecret: s.tsigSecret}
+	s.server[tcp] = &dns.Server{
+		Listener: l,
+		Net:      "tcp",
+		Handler: dns.HandlerFunc(func(w dns.ResponseWriter, r *dns.Msg) {
+			ctx := context.WithValue(context.Background(), Key{}, s)
+			ctx = context.WithValue(ctx, LoopKey{}, 0)
+			s.ServeDNS(ctx, w, r)
+		}),
+		TsigSecret: s.tsigSecret,
+		MsgAcceptFunc: func(dh dns.Header) dns.MsgAcceptAction {
+			// bypass defaultMsgAcceptFunc to allow dynamic update (https://github.com/miekg/dns/pull/830)
+			return dns.MsgAccept
+		},
+	}
 	s.m.Unlock()
 
 	return s.server[tcp].ActivateAndServe()
@@ -144,11 +153,20 @@ func (s *Server) Serve(l net.Listener) error {
 // This implements caddy.UDPServer interface.
 func (s *Server) ServePacket(p net.PacketConn) error {
 	s.m.Lock()
-	s.server[udp] = &dns.Server{PacketConn: p, Net: "udp", Handler: dns.HandlerFunc(func(w dns.ResponseWriter, r *dns.Msg) {
-		ctx := context.WithValue(context.Background(), Key{}, s)
-		ctx = context.WithValue(ctx, LoopKey{}, 0)
-		s.ServeDNS(ctx, w, r)
-	}), TsigSecret: s.tsigSecret}
+	s.server[udp] = &dns.Server{
+		PacketConn: p,
+		Net:        "udp",
+		Handler: dns.HandlerFunc(func(w dns.ResponseWriter, r *dns.Msg) {
+			ctx := context.WithValue(context.Background(), Key{}, s)
+			ctx = context.WithValue(ctx, LoopKey{}, 0)
+			s.ServeDNS(ctx, w, r)
+		}),
+		TsigSecret: s.tsigSecret,
+		MsgAcceptFunc: func(dh dns.Header) dns.MsgAcceptAction {
+			// bypass defaultMsgAcceptFunc to allow dynamic update (https://github.com/miekg/dns/pull/830)
+			return dns.MsgAccept
+		},
+	}
 	s.m.Unlock()
 
 	return s.server[udp].ActivateAndServe()
