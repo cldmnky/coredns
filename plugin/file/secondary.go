@@ -13,6 +13,18 @@ func (z *Zone) TransferIn() error {
 		return nil
 	}
 	m := new(dns.Msg)
+
+	if z.TsigSecrets != nil {
+		// Do some kind of lookup here to get the right key
+		if len(z.TsigSecrets) > 1 {
+			log.Warningf("Multiple TSIG keys defined, using first one")
+		}
+		for k, _ := range z.TsigSecrets {
+			m.SetTsig(k, dns.HmacMD5, 300, time.Now().Unix())
+			break
+		}
+	}
+
 	m.SetAxfr(z.origin)
 
 	z1 := z.CopyWithoutApex()
@@ -24,6 +36,9 @@ func (z *Zone) TransferIn() error {
 Transfer:
 	for _, tr = range z.TransferFrom {
 		t := new(dns.Transfer)
+		if z.TsigSecrets != nil {
+			t.TsigSecret = z.TsigSecrets
+		}
 		c, err := t.In(m, tr)
 		if err != nil {
 			log.Errorf("Failed to setup transfer `%s' with `%q': %v", z.origin, tr, err)

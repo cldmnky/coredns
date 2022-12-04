@@ -104,6 +104,7 @@ func fileParse(c *caddy.Controller) (Zones, error) {
 					if err != nil {
 						return err
 					}
+					zone.TsigSecrets = config.TsigSecret
 					z[origins[i]] = zone
 				}
 				names = append(names, origins[i])

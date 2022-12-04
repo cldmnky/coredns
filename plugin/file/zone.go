@@ -31,6 +31,8 @@ type Zone struct {
 	reloadShutdown chan bool
 
 	Upstream *upstream.Upstream // Upstream for looking up external names during the resolution process.
+
+	TsigSecrets map[string]string // TSIG secrets for zone transfers.
 }
 
 // Apex contains the apex records of a zone: SOA, NS and their potential signatures.
